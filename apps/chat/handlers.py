@@ -31,7 +31,9 @@ def new_messages_handler(stream):
     """
     while True:
         packet = yield from stream.get()
-
+        if packet['message'] == 'clean':
+            print('clean chat logs...')
+            models.ChatMessage.objects.all().delete()
         # Save the message
         msg = models.ChatMessage.objects.create(
             username=packet['username'],

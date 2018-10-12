@@ -33,7 +33,7 @@ class Common(Configuration):
 
     ALLOWED_HOSTS = values.ListValue([])
 
-    CHAT_WS_SERVER_HOST = values.Value('localhost')
+    CHAT_WS_SERVER_HOST = values.Value('0.0.0.0')
     CHAT_WS_SERVER_PORT = values.IntegerValue(5002)
 
     # Application definition
@@ -99,7 +99,7 @@ class Common(Configuration):
     DATABASES = {
         'default': dj_database_url.config(
             default="sqlite:///{}".format(
-                os.path.join(BASE_DIR, 'db/db.sqlite3')
+                os.path.join(BASE_DIR, 'db.sqlite3')
             )
         )
     }

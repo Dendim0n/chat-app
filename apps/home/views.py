@@ -18,7 +18,7 @@ class HomePageView(generic.ListView):
         )
         context['silly_name'] = silly_name
         context['ws_server_path'] = 'ws://{}:{}/'.format(
-            settings.CHAT_WS_SERVER_HOST,
+            "nb.4st.team",
             settings.CHAT_WS_SERVER_PORT,
         )
         return context

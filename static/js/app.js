@@ -1,4 +1,4 @@
-$(document).ready(function(){
+$(document).ready(function () {
     var websocket = null
 
     function addNewMessage(packet) {
@@ -9,7 +9,7 @@ $(document).ready(function(){
 
     function addNewUser(packet) {
         $('#user-list').html('');
-        packet.value.forEach(function(userInfo){
+        packet.value.forEach(function (userInfo) {
             if (userInfo.username == getUsername()) return
             var tmpl = Handlebars.compile($('#user-list-item-template').html())
             $('#user-list').append(tmpl(userInfo))
@@ -18,16 +18,25 @@ $(document).ready(function(){
 
     function scrollToLastMessage() {
         var $msgs = $('#messages')
-        $msgs.animate({"scrollTop": $msgs.prop('scrollHeight')})
+        $msgs.animate({
+            "scrollTop": $msgs.prop('scrollHeight')
+        })
     }
 
     function generateMessage(context) {
         var tmpl = Handlebars.compile($('#chat-message-template').html())
-        return tmpl({msg: context})
+        let message = context["message"]
+        let realMessage = decrypto(message, parseInt($('#secret-number').val()), parseInt($('#secret-hex').val()))
+        context["message"] = realMessage
+        return tmpl({
+            msg: context
+        })
     }
 
 
-    function getUsername() { return $('#username').text() }
+    function getUsername() {
+        return $('#username').text()
+    }
 
     function setupChatWebSocket() {
         websocket = new WebSocket($('#ws-server-path').val() + getUsername())
@@ -42,11 +51,13 @@ $(document).ready(function(){
 
         websocket.onclose = function (event) {
             console.log('disconnected');
-            var onClosePacket = JSON.stringify({type: 'close'})
+            var onClosePacket = JSON.stringify({
+                type: 'close'
+            })
             websocket.send(onClosePacket)
         }
 
-        websocket.onmessage = function(event) {
+        websocket.onmessage = function (event) {
             var packet;
 
             try {
@@ -59,15 +70,15 @@ $(document).ready(function(){
             switch (packet.type) {
                 case "users-changed":
                     addNewUser(packet)
-                break
+                    break
 
                 case "new-message":
                     addNewMessage(packet)
-                break;
+                    break;
 
                 case "new-message":
                     console.log('some one is typing...')
-                break;
+                    break;
 
                 default:
                     console.log('error: ', event)
@@ -77,28 +88,95 @@ $(document).ready(function(){
 
     function broadCastMessage(message) {
         var newMessagePacket = JSON.stringify({
-                type: 'new-message',
-                username: getUsername(),
-                message: message
-            });
-            websocket.send(newMessagePacket)
+            type: 'new-message',
+            username: getUsername(),
+            message: message
+        });
+        websocket.send(newMessagePacket)
     }
 
-    $('#chat-message').keypress(function(e){
-        if (e.which == 13 && this.value){
+    $('#chat-message').keypress(function (e) {
+        if (e.which == 13 && this.value) {
             broadCastMessage(this.value)
             this.value = ""
             return false
         }
     })
 
-    $('#btn-send-message').click(function(e){
+    $('#btn-send-message').click(function (e) {
         var $chatInput = $('#chat-message')
-        var msg = $chatInput.val()
+        var msg = encrypto($chatInput.val(), parseInt($('#secret-number').val()), parseInt($('#secret-hex').val()))
         if (!msg) return
-        broadCastMessage($chatInput.val())
+        broadCastMessage(msg)
         $chatInput.val('')
     })
+
+    /**
+     * encrypto 加密程序
+     * @param {Strng} str 待加密字符串
+     * @param {Number} xor 异或值
+     * @param {Number} hex 加密后的进制数
+     * @return {Strng} 加密后的字符串
+     */
+    function encrypto(str, xor, hex) {
+        if (typeof str !== 'string' || typeof xor !== 'number' || typeof hex !== 'number') {
+            return;
+        }
+        if (str == 'clean') {
+            console.log("cleaning...")
+            return str
+        }
+        let resultList = [];
+        hex = hex <= 25 ? hex : hex % 25;
+
+        for (let i = 0; i < str.length; i++) {
+            // 提取字符串每个字符的ascll码
+            let charCode = str.charCodeAt(i);
+            // 进行异或加密
+            charCode = (charCode * 1) ^ xor;
+            // 异或加密后的字符转成 hex 位数的字符串
+            charCode = charCode.toString(hex);
+            resultList.push(charCode);
+        }
+
+        let splitStr = String.fromCharCode(hex + 97);
+        let resultStr = resultList.join(splitStr);
+        return resultStr;
+    }
+    /**
+     * decrypto 解密程序
+     * @param {Strng} str 待加密字符串
+     * @param {Number} xor 异或值
+     * @param {Number} hex 加密后的进制数
+     * @return {Strng} 加密后的字符串
+     */
+    function decrypto(str, xor, hex) {
+        if (typeof str !== 'string' || typeof xor !== 'number' || typeof hex !== 'number') {
+            return;
+        }
+        if (str == 'clean') {
+            console.log("cleaning...")
+            return str
+        }
+        let strCharList = [];
+        let resultList = [];
+        hex = hex <= 25 ? hex : hex % 25;
+        // 解析出分割字符
+        let splitStr = String.fromCharCode(hex + 97);
+        // 分割出加密字符串的加密后的每个字符
+        strCharList = str.split(splitStr);
+
+        for (let i = 0; i < strCharList.length; i++) {
+            // 将加密后的每个字符转成加密后的ascll码
+            let charCode = parseInt(strCharList[i], hex);
+            // 异或解密出原字符的ascll码
+            charCode = (charCode * 1) ^ xor;
+            let strChar = String.fromCharCode(charCode);
+            resultList.push(strChar);
+        }
+        let resultStr = resultList.join('');
+        return resultStr;
+    }
 
 
     setupChatWebSocket()
